@@ -1,0 +1,123 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Language {
+  turkish
+  kazakh
+  russian
+}
+enum PreferredFormat {
+  online
+  offline
+}
+enum ApplicationStatus {
+  new
+  contacted
+  enrolled
+  rejected
+}
+enum AdminRole {
+  admin
+  editor
+}
+
+model Application {
+  id              String            @id @default(cuid())
+  requestId       String            @unique
+  requestHash     String
+  name            String
+  phone           String
+  email           String?
+  language        Language
+  level           String
+  preferredFormat PreferredFormat
+  message         String
+  status          ApplicationStatus @default(new)
+  source          String
+  consentGivenAt  DateTime
+  consentVersion  String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  notifications   NotificationOutbox[]
+
+  @@index([status, createdAt])
+  @@index([language, createdAt])
+}
+
+model Program {
+  id          String   @id @default(cuid())
+  language    Language
+  title       String
+  nativeName  String
+  greeting    String
+  description String
+  levels      String[]
+  topics      String[]
+  price       Int?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+}
+model Phrase {
+  id            String @id @default(cuid())
+  turkish       String
+  transcription String
+  translation   String
+  category      String
+}
+model FaqItem {
+  id        String @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int    @default(0)
+}
+model Review {
+  id          String   @id @default(cuid())
+  authorName  String
+  text        String
+  rating      Int
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+model AdminUser {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  role         AdminRole      @default(admin)
+  createdAt    DateTime        @default(now())
+  sessions     AdminSession[]
+}
+model AdminSession {
+  tokenHash String    @id
+  userId    String
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrfToken String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+model RateLimitBucket {
+  id        String   @id
+  count     Int      @default(1)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+model NotificationOutbox {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  attempts      Int         @default(0)
+  nextAttemptAt DateTime    @default(now())
+  deliveredAt   DateTime?
+  lockedUntil   DateTime?
+  telegramSent  Boolean    @default(false)
+  emailSent     Boolean    @default(false)
+  lastError     String?
+  createdAt     DateTime    @default(now())
+  @@index([deliveredAt, nextAttemptAt])
+}

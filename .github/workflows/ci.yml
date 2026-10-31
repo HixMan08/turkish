@@ -1,0 +1,21 @@
+name: ASYL checks
+on:
+  pull_request:
+  push:
+    branches: [backend-fullstack-20261031]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://test:test@127.0.0.1:5432/asyl
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test

@@ -1,0 +1,12 @@
+import { useEffect, useRef, useState } from 'react';
+import { routeHref, useConsent } from './consent';
+function CookieSettings({ onDone }: { onDone: () => void }) {
+  const { consent, save } = useConsent(); const dialog = useRef<HTMLDialogElement>(null);
+  const [functional, setFunctional] = useState(consent?.functional ?? false); const [analytics, setAnalytics] = useState(consent?.analytics ?? false);
+  useEffect(() => { const element = dialog.current; element?.showModal(); return () => element?.close(); }, []);
+  return <dialog ref={dialog} className="cookie-dialog" onCancel={onDone} onClose={onDone} aria-labelledby="cookie-title"><button className="dialog-close" onClick={onDone} type="button" aria-label="Закрыть настройки cookies">×</button><h2 id="cookie-title">Настройки cookies</h2><p>Вы решаете, какие дополнительные функции разрешить.</p><label><input type="checkbox" checked disabled /> Необходимые — сессия администратора и ваше решение о cookies.</label><label><input type="checkbox" checked={functional} onChange={e => setFunctional(e.target.checked)} /> Функциональные — запоминать выбранное направление.</label><label><input type="checkbox" checked={analytics} onChange={e => setAnalytics(e.target.checked)} /> Аналитика — обезличенная статистика посещений после подключения Umami.</label><p>При отзыве согласия на аналитику страница перезагрузится. При включённом Do Not Track аналитика не запускается.</p><button className="button" type="button" onClick={() => save(functional, analytics)}>Сохранить выбор</button><a className="text-link" href={routeHref('/cookies')}>Политика cookies</a></dialog>;
+}
+export function CookieBanner() {
+  const { consent, settingsOpen, openSettings, closeSettings, save } = useConsent();
+  return <>{!consent && <aside className="cookie-banner" aria-label="Согласие на cookies"><div><strong>Сайт под вашим контролем</strong><p>Необходимые cookies обеспечивают работу сайта. Дополнительные функции и аналитика включаются только с вашего разрешения. <a href={routeHref('/cookies')}>Подробнее</a></p></div><div className="cookie-actions"><button className="button" onClick={() => save(true, true)} type="button">Принять все</button><button className="cookie-secondary" onClick={() => save(false, false)} type="button">Только необходимые</button><button className="cookie-secondary" onClick={openSettings} type="button">Настроить</button></div></aside>}{settingsOpen && <CookieSettings onDone={closeSettings} />}</>;
+}

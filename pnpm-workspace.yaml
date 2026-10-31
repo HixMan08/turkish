@@ -1,7 +1,0 @@
-storeDir: .sites-runtime/pnpm-store
-nodeLinker: hoisted
-packageImportMethod: copy
-allowBuilds:
-  esbuild: true
-minimumReleaseAgeExclude:
-  - eslint@10.14.0

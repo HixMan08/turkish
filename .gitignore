@@ -1,5 +1,13 @@
 node_modules/
+**/dist/
 dist/
 outputs/
 .sites-runtime/
+.env
+.env.*
+!.env.example
 *.local
+coverage/
+*.log
+*.db
+*.sqlite*

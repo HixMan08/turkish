@@ -1,0 +1,18 @@
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { ApiError, api } from '../api';
+import type { Resource } from './resources';
+import { resources } from './resources';
+interface EditorProps { resource: Resource; record: Record<string, unknown>; csrfToken: string; onClose: () => void; onSaved: () => void; }
+export function ContentEditor({ resource, record, csrfToken, onClose, onSaved }: EditorProps) {
+  const [values, setValues] = useState<Record<string, unknown>>(() => Object.fromEntries(resources[resource].fields.map(field => [field.key, field.type === "list" && Array.isArray(record[field.key]) ? (record[field.key] as string[]).join(", ") : record[field.key]]))); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const dialog = useRef<HTMLDialogElement>(null); const spec = resources[resource];
+  useEffect(() => { const el = dialog.current; el?.showModal(); return () => el?.close(); }, []);
+  async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault(); setBusy(true); setError('');
+    const body = Object.fromEntries(spec.fields.map(field => [field.key, field.type === "list" ? String(values[field.key] ?? "").split(",").map(value=>value.trim()).filter(Boolean) : values[field.key]]));
+    try { await api(`/admin/${resource}${typeof record.id === 'string' ? '/' + record.id : ''}`, { method: typeof record.id === 'string' ? 'PUT' : 'POST', headers: { 'X-CSRF-Token': csrfToken }, body: JSON.stringify(body) }); onSaved(); }
+    catch(e) { setError(e instanceof ApiError ? [e.message,...Object.entries(e.fields).map(([key,messages])=>key+': '+messages.join(', '))].join(' · ') : 'Не удалось сохранить'); } finally { setBusy(false); }
+  }
+  return <dialog ref={dialog} className="admin-editor cookie-dialog" onCancel={onClose} onClose={onClose} aria-labelledby="editor-title"><button className="dialog-close" type="button" onClick={onClose} aria-label="Закрыть редактор">×</button><h2 id="editor-title">{record.id ? 'Редактирование' : 'Новая запись'}: {spec.label}</h2><form onSubmit={e=>{void save(e);}}><fieldset disabled={busy}>{spec.fields.map(field => <div className="field" key={field.key}>{field.type === 'boolean' ? <label><input type="checkbox" checked={values[field.key] === true} onChange={e=>setValues(p=>({...p,[field.key]:e.target.checked}))} /> {field.label}</label> : <><label htmlFor={'edit-'+field.key}>{field.label}</label>{field.type === 'language' ? <select id={'edit-'+field.key} value={String(values[field.key] ?? 'turkish')} onChange={e=>setValues(p=>({...p,[field.key]:e.target.value}))}><option value="turkish">Турецкий</option><option value="kazakh">Казахский</option><option value="russian">Русский</option></select> : field.type === 'long' ? <textarea id={'edit-'+field.key} rows={4} required maxLength={3000} value={String(values[field.key] ?? '')} onChange={e=>setValues(p=>({...p,[field.key]:e.target.value}))} /> : <input id={'edit-'+field.key} type={field.type === 'number' ? 'number' : 'text'} required={!field.optional} maxLength={1000} min={field.key === 'rating' ? 1 : 0} max={field.key === 'rating' ? 5 : undefined} value={field.type === 'list' && Array.isArray(values[field.key]) ? (values[field.key] as string[]).join(', ') : String(values[field.key] ?? '')} onChange={e=>setValues(p=>({...p,[field.key]:field.type === 'number' ? e.target.value === '' && field.optional ? null : Number(e.target.value) : e.target.value}))} />}</>}</div>)}<button className="button" type="submit">{busy ? 'Сохраняем…' : 'Сохранить'}</button></fieldset><p role="alert" className="field-error">{error}</p></form></dialog>;
+}
