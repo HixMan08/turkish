@@ -1,0 +1,84 @@
+name: Publish ASYL website
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Configure paths for GitHub Pages
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const hero = "src/components/Hero.tsx";
+          fs.writeFileSync(
+            hero,
+            fs.readFileSync(hero, "utf8").replace(
+              'src="/istanbul.svg"',
+              'src={`${import.meta.env.BASE_URL}istanbul.svg`}'
+            )
+          );
+
+          const fonts = "public/fonts.css";
+          fs.writeFileSync(
+            fonts,
+            fs.readFileSync(fonts, "utf8")
+              .replaceAll("/fonts/", "./fonts/")
+          );
+
+          const html = "index.html";
+          fs.writeFileSync(
+            html,
+            fs.readFileSync(html, "utf8").replaceAll(
+              "https://merhaba-adik-school.fairpalm.chatgpt.site",
+              "https://hixman08.github.io/turkish"
+            )
+          );
+          NODE
+
+      - name: Check code
+        run: npm run lint
+
+      - name: Build website
+        run: npm run build -- --base=/turkish/
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4
